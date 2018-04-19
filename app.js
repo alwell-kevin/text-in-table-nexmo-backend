@@ -25,6 +25,9 @@ app.all('/sms', function (req, res) {
     getSession(from, text).then((session) => {
         if (session.new) {
             sessions.push(session)
+
+            console.log("SENDING NEW SESSION RESP", session.num, session.response);
+            nexmo.sendResponse(session.num, session.response);
         }
     })
 
@@ -33,9 +36,11 @@ app.all('/sms', function (req, res) {
 
 //TODO: DIFFERENTIATE VERTICAL AND TEXT
 function getSession(from, text) {
+    console.log("GETTING SESSION: ", from);
+
     return new Promise((resolve, reject) => {
         sessions.forEach((session) => {
-            console.log("SESSION: ", session, "from: ", from)
+            console.log("FOUND LIVE SESSION: ", session, "from: ", from)
             if (from === session.num) {
 
                 switch (session.step) {
@@ -43,7 +48,7 @@ function getSession(from, text) {
                         session.new = false;
                         session.vertical = text;
                         session.step = 1
-                        session.response = "Please enter a novel idea.";
+                        session.response = "Please enter your novel idea.";
                         nexmo.sendResponse(session.num, session.response);
                         break;
                     case 1:
@@ -67,6 +72,7 @@ function getSession(from, text) {
             }
         })
 
+        console.log("CREATING NEW SESSION: ", from)
         resolve({
             "num": from,
             "vertical": text,
@@ -75,8 +81,20 @@ function getSession(from, text) {
             "step": 0,
             "new": true
         })
+
+        reject("error")
     })
 }
+
+app.get("/sessions", function (req, res) {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
+    res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type, Authorization');
+    console.log("RETURNING SESSIONS ARRAY: ", sessions);
+
+    res.json(sessions);
+})
 
 // Start server
 app.listen(port, () => {

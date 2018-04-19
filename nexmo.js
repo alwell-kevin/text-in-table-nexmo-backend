@@ -1,3 +1,4 @@
+require('dotenv').config()
 var Nexmo = require('nexmo');
 
 var nexmo = new Nexmo({
@@ -7,15 +8,17 @@ var nexmo = new Nexmo({
 });
 
 const sendResponse = (num, msg) => {
-    nexmo.message.sendSms(process.env.NEXMO_FROM, num, msg, function (err, httpResp, body) {
-        if (err) {
-            console.log("sendMessagesThroughNexmo couldn't send request. error: " + err);
-            reject(err);
-        } else {
-            console.log("message sent through nexmo");
-            resolve(200);
-        }
-    })
+    console.log("SENDING TEXT from: ", process.env.NEXMO_NUMBER, "to: ", num, "msg: ", msg);
+
+    setTimeout(function () {
+        nexmo.message.sendSms(process.env.NEXMO_NUMBER, num, msg, function (err, httpResp, body) {
+            if (err) {
+                console.log("sendMessagesThroughNexmo couldn't send request. error: " + err);
+            } else {
+                console.log("message sent through nexmo");
+            }
+        })
+    }, 1500);
 }
 
 module.exports.sendResponse = sendResponse;
