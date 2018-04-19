@@ -6,16 +6,8 @@ var cors = require('cors');
 var bodyParser = require('body-parser');
 var app = express();
 app.use(cors());
-
-
-var Nexmo = require('nexmo');
-
-var nexmo = new Nexmo({
-    apiKey: process.env.NEXMO_API_KEY,
-    apiSecret: process.env.NEXMO_API_SECRET,
-    applicationId: process.env.NEXMO_APP_ID,
-    privateKey: process.env.NEXMO_PRIVATE_KEY,
-});
+var sessions = [];
+var nexmo = require("./nexmo");
 
 app.use(bodyParser.json({
     type: 'application/json'
@@ -29,42 +21,62 @@ app.all('/sms', function (req, res) {
 
     var text = req.query.text;
     var from = req.query.msisdn;
-    
+
+    getSession(from, text).then((session) => {
+        if (session.new) {
+            sessions.push(session)
+        }
+    })
 
     res.sendStatus(200);
 })
 
-// function storeMessage(from, text) {
-//     var session = {};
-//     var newLead = true;
+//TODO: DIFFERENTIATE VERTICAL AND TEXT
+function getSession(from, text) {
+    return new Promise((resolve, reject) => {
+        sessions.forEach((session) => {
+            console.log("SESSION: ", session, "from: ", from)
+            if (from === session.num) {
 
-//     sessions.forEach((session, index) => {
-//         if (from === session.num) {
-//             newLead = false
-//         }
-//     })
+                switch (session.step) {
+                    case 0:
+                        session.new = false;
+                        session.vertical = text;
+                        session.step = 1
+                        session.response = "Please enter a novel idea.";
+                        nexmo.sendResponse(session.num, session.response);
+                        break;
+                    case 1:
+                        session.message = text;
+                        session.step = 2
+                        session.response = "The board will update shortly. Thanks for choosing Nexmo! ";
+                        nexmo.sendResponse(session.num, session.response);
+                        break;
+                    case 2:
+                        session.message = "";
+                        session.vertical = "";
+                        session.step = 0;
+                        session.response = "Please enter a vertical";
+                        nexmo.sendResponse(session.num, session.response);
+                        break;
+                }
 
-//     if (newLead) {
-//         session = {
-//             "num": from,
-//             "text": text
-//         }
-//     }
+                console.log("GOT SESSION: ", session);
+                session.message = text;
+                resolve(session)
+            }
+        })
 
-//     sessions.push(session);
-// }
-
-// function getSession(from) {
-//     return new Promise((resolve, reject) => {
-//         sessions.forEach((session) => {
-//             console.log("SESSION: ", session, "from: ", from)
-//             if (from === session.num) {
-//                 console.log("GOT SESSION: ", session);
-//                 resolve(session)
-//             }
-//         })
-//     })
-// }
+        resolve({
+            "num": from,
+            "vertical": text,
+            "message": text,
+            "response": "Please enter a vertical",
+            "step": 0,
+            "new": true
+        })
+    })
+}
 
 // Start server
 app.listen(port, () => {
